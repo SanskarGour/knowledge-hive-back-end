@@ -31,8 +31,8 @@ mongoDB.connect(mongoURL).then(function () {
   });
   app.use(express.json());
   app.use("/api/", require("./routes/register"));
-  app.use("/api/post/", require("./routes/addProject"));
-  app.use("/api/users", require("./routes/userRoutes"));
+  app.use("/api/post/", require("./routes/post"));
+  app.use("/api/user", require("./routes/user"));
 });
 
 app.listen(PORT, (error) => {
