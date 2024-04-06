@@ -9,7 +9,7 @@ const userSchema = new Schema({
   contact: { type: Number, required: true },
   year_of_passing: { type:Number, required: true },
   branch: { type: String, required: true },
-  favorite: [{ type: String, default:"NA" }],
+  liked_posts: [{ type: String, default:"NA" }],
 });
 
 module.exports = mongoose.model("user", userSchema);

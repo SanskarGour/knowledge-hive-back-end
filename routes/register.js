@@ -54,7 +54,6 @@ router.post(
         contact: req.body.contact,
         year_of_passing: req.body.year_of_passing,
         branch: req.body.branch,
-        date: req.body.date,
       });
 
       res.json({ success: true });
