@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 require("dotenv").config();
 const cors = require("cors");
 const mongoDB = require("mongoose");
@@ -23,6 +23,16 @@ app.use((req, res, next) => {
   );
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE,PUT");
   next();
+});
+
+mongoDB.connect(mongoURL).then(function () {
+  app.get("/", (req, res) => {
+    res.send("API Works");
+  });
+  app.use(express.json());
+  app.use("/api/", require("./routes/register"));
+  app.use("/api/post/", require("./routes/addProject"));
+  app.use("/api/users", require("./routes/userRoutes"));
 });
 
 app.listen(PORT, (error) => {
