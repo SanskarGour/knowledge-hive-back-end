@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 require("dotenv").config();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 const cors = require("cors");
 const mongoDB = require("mongoose");
 const CORS_URL = `http://localhost:3000`;
@@ -35,7 +35,7 @@ mongoDB.connect(mongoURL).then(function () {
   app.use("/api/user", require("./routes/user"));
 });
 
-app.listen(PORT, (error) => {
+app.listen(PORT,'0.0.0.0', (error) => {
   if (!error)
     console.log(
       "Server is Successfully Running, and App is listening on port " + PORT
