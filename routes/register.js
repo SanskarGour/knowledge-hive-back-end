@@ -51,6 +51,10 @@ router.post(
         name: req.body.name,
         email: req.body.email,
         password: hashedPassword,
+        contact: req.body.contact,
+        year_of_passing: req.body.year_of_passing,
+        branch: req.body.branch,
+        date: req.body.date,
       });
 
       res.json({ success: true });
@@ -66,7 +70,6 @@ router.post(
 router.post(
   "/login",
   [body("email").isEmail(), body("password").isLength({ min: 8 })],
-  checkUserProfile,
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

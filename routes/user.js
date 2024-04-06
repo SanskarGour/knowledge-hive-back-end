@@ -39,7 +39,7 @@ router.put("/profile/:username", async (req, res) => {
       { username }, // Query for finding the user by username
       {
         name: req.body.name,
-        contact_no: req.body.contact_no,
+        contact: req.body.contact,
       },
       { new: true } // Return the updated user after the update operation
     );

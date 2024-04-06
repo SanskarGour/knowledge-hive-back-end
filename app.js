@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
-const PORT = process.env.PORT;
 require("dotenv").config();
+const PORT = process.env.PORT || 5000;
 const cors = require("cors");
 const mongoDB = require("mongoose");
 const CORS_URL = `http://localhost:3000`;
@@ -21,7 +21,7 @@ app.use((req, res, next) => {
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept"
   );
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE,PUT");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, PUT");
   next();
 });
 
@@ -31,7 +31,7 @@ mongoDB.connect(mongoURL).then(function () {
   });
   app.use(express.json());
   app.use("/api/", require("./routes/register"));
-  app.use("/api/post/", require("./routes/post"));
+  app.use("/api/post", require("./routes/post"));
   app.use("/api/user", require("./routes/user"));
 });
 
