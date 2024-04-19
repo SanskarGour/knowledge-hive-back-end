@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Post = require("../model/postSchema");
+const User = require("../model/userSchema");
 
 //get all posts
 router.get("/fetch", (req, res) => {
@@ -85,7 +86,7 @@ router.put("/update/:postId", async (req, res) => {
 });
 
 // Add comment
-router.put("/addcomment/:postId", async (req, res) => {
+router.post("/comment/:postId", async (req, res) => {
   const { postId } = req.params;
   const newComment = req.body;
 
@@ -112,6 +113,56 @@ router.put("/addcomment/:postId", async (req, res) => {
     const updatedPost = await post.save();
 
     res.json({ success: true, updatedPost });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+});
+
+// Add like
+router.post("/like/:postId", async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.body.userId;
+
+  try {
+    const post = await Post.findOne({ _id: postId });
+    const user = await User.findOne({ _id: userId });
+
+    if (!post) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Post not found" });
+    }
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const isPostAlreadyLiked = user.liked_posts.includes(postId);
+
+    //is post already liked
+    if (isPostAlreadyLiked){
+      return res
+      .status(400)
+      .json({ success: false, message: "Post already liked" });
+    }
+
+    //add post to liked
+    user.liked_posts.push(postId);
+    const updatedUser = await user.save();
+
+    //increase liked count of post
+    const updatedPost = await Post.findOneAndUpdate(
+      { _id: postId }, // Use the unique field for the query
+      {
+        likes: post.likes + 1
+      },
+      { new: true }
+    );
+
+    res.json({ success: true, updatedPost , updatedUser});
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, message: "Internal Server Error" });
