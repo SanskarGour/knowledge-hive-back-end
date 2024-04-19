@@ -19,12 +19,10 @@ router.post('/add', async (req, res) => {
   try {
     await Post.create({
       email: req.body.email,
-      postId: req.body.postId,
       postTitle: req.body.postTitle,
       postDesc: req.body.postDesc,
-      comments: req.body.comments
     });
-    console.log(req.body.comments)
+    // console.log(req.body.comments)
     res.json({ success: true });
   } catch (err) {
     console.log(err);
