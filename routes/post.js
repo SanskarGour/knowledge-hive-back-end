@@ -35,7 +35,7 @@ router.delete('/delete/:postId', async (req, res) => {
   const { postId } = req.params;
 
   try {
-    const deletedPost = await Post.findOneAndDelete({"postId":postId});
+    const deletedPost = await Post.findOneAndDelete({"_id":postId});
 
     if (!deletedPost) {
       return res.status(404).json({ success: false, message: 'Post not found.' });
@@ -49,21 +49,33 @@ router.delete('/delete/:postId', async (req, res) => {
 });
 
 // Update Post
-// router.delete('/delete/:postId', async (req, res) => {
-//   const { postId } = req.params;
+router.put('/update/:postId', async (req, res) => {
+  const { postId } = req.params;
 
-//   try {
-//     const deletedPost = await Post.findOneAndDelete({"postId":postId});
+  try {
+    if (!postId) {
+      return res.status(400).json({ success: false, message: 'PostId parameter is missing' });
+    }
 
-//     if (!deletedPost) {
-//       return res.status(404).json({ success: false, message: 'Post not found.' });
-//     }
+    const updatedPost = await Post.findOneAndUpdate(
+      {"_id":postId},
+      {
+        postTitle: req.body.postTitle,
+        postDesc: req.body.postDesc,
+      },
+      { new: true }
+    );
 
-//     res.json({ success: true, deletedPost });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ success: false, err });
-//   }
-// });
+    if (!updatedPost) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    res.json({ success: true, updatedPost });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+
+});
 
 module.exports = router;
