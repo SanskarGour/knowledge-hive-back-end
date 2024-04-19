@@ -8,6 +8,7 @@ const commentSchema = new Schema({
 });
 
 const postSchema = new Schema({
+  username: { type: String, required: true },
   email: { type: String, required: true },
   postTitle: { type: String, required: true },
   postDesc: { type: String, required: true },
