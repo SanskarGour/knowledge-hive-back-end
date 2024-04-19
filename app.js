@@ -30,7 +30,7 @@ mongoDB.connect(mongoURL).then(function () {
     res.send("API Works");
   });
   app.use(express.json());
-  app.use("/api/", require("./routes/register"));
+  app.use("/api", require("./routes/register"));
   app.use("/api/post", require("./routes/post"));
   app.use("/api/user", require("./routes/user"));
 });
