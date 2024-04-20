@@ -169,4 +169,54 @@ router.post("/like/:postId", async (req, res) => {
   }
 });
 
+// remove like
+router.post("/unlike/:postId", async (req, res) => {
+  const { postId } = req.params;
+  const userId = req.body.userId;
+
+  try {
+    const post = await Post.findOne({ _id: postId });
+    const user = await User.findOne({ _id: userId });
+
+    if (!post) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Post not found" });
+    }
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const isPostAlreadyLiked = user.liked_posts.includes(postId);
+
+    //is post already liked
+    if (!isPostAlreadyLiked){
+      return res
+      .status(400)
+      .json({ success: false, message: "Post Not liked" });
+    }
+
+    //add post to liked
+    user.liked_posts.splice(user.liked_posts.indexOf(postId));
+    const updatedUser = await user.save();
+
+    //increase liked count of post
+    const updatedPost = await Post.findOneAndUpdate(
+      { _id: postId }, // Use the unique field for the query
+      {
+        likes: post.likes - 1
+      },
+      { new: true }
+    );
+
+    res.json({ success: true, updatedPost , updatedUser});
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+});
+
 module.exports = router;
