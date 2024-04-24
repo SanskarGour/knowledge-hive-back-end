@@ -33,6 +33,7 @@ mongoDB.connect(mongoURL).then(function () {
   app.use("/api", require("./routes/register"));
   app.use("/api/post", require("./routes/post"));
   app.use("/api/user", require("./routes/user"));
+  app.use("/api/category", require("./routes/category"));
 });
 
 app.listen(PORT,'0.0.0.0', (error) => {

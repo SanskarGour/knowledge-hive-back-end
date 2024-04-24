@@ -19,7 +19,7 @@ async function addCategory(element) {
     // console.log("category found");
     // console.log(ctgry);
     await Category.findOneAndUpdate(
-      { category: element }, // Use the unique field for the query
+      { category: element },
       {
         no_of_posts: ctgry.no_of_posts + 1,
       },
@@ -109,6 +109,12 @@ router.put("/update/:postId", async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Post not found" });
+    }
+
+    if (req.body.category.length != 0) {
+      req.body.category.forEach((element) => {
+        addCategory(element);
+      });
     }
 
     res.json({ success: true, updatedPost });
