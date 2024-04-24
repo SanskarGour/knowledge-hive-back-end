@@ -13,7 +13,8 @@ const postSchema = new Schema({
   postTitle: { type: String, required: true },
   postDesc: { type: String, required: true },
   likes: {type: Number, default:"0"},
-  comments : [commentSchema]
+  comments : [commentSchema],
+  category: [{type: String, default:"all", required: true}],
 });
 
 module.exports = mongoose.model('post', postSchema);

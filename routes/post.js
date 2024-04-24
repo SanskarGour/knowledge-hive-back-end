@@ -2,6 +2,31 @@ const express = require("express");
 const router = express.Router();
 const Post = require("../model/postSchema");
 const User = require("../model/userSchema");
+const Category = require("../model/categorySchema");
+
+//add category
+async function addCategory(element) {
+  const ctgry = await Category.findOne({ category: element });
+  if (ctgry === null || ctgry === undefined) {
+    // category not found
+    // console.log("category not found");
+    await Category.create({
+      category: element,
+      no_of_posts: 1,
+    });
+  } else {
+    // category found
+    // console.log("category found");
+    // console.log(ctgry);
+    await Category.findOneAndUpdate(
+      { category: element }, // Use the unique field for the query
+      {
+        no_of_posts: ctgry.no_of_posts + 1,
+      },
+      { new: true }
+    );
+  }
+}
 
 //get all posts
 router.get("/fetch", (req, res) => {
@@ -18,17 +43,24 @@ router.get("/fetch", (req, res) => {
 //add new Post
 router.post("/add", async (req, res) => {
   try {
-    await Post.create({
+    const newPost = await Post.create({
       username: req.body.username,
       email: req.body.email,
       postTitle: req.body.postTitle,
       postDesc: req.body.postDesc,
+      category: req.body.category,
     });
-    // console.log(req.body.comments)
-    res.json({ success: true });
+
+    if (req.body.category.length != 0) {
+      req.body.category.forEach((element) => {
+        addCategory(element);
+      });
+    }
+
+    return res.json({ success: true , newPost });
   } catch (err) {
     console.log(err);
-    res.json({ success: false, err });
+    return res.json({ success: false, err });
   }
 });
 
@@ -68,6 +100,7 @@ router.put("/update/:postId", async (req, res) => {
       {
         postTitle: req.body.postTitle,
         postDesc: req.body.postDesc,
+        category: req.body.category,
       },
       { new: true }
     );
@@ -143,10 +176,10 @@ router.post("/like/:postId", async (req, res) => {
     const isPostAlreadyLiked = user.liked_posts.includes(postId);
 
     //is post already liked
-    if (isPostAlreadyLiked){
+    if (isPostAlreadyLiked) {
       return res
-      .status(400)
-      .json({ success: false, message: "Post already liked" });
+        .status(400)
+        .json({ success: false, message: "Post already liked" });
     }
 
     //add post to liked
@@ -157,12 +190,12 @@ router.post("/like/:postId", async (req, res) => {
     const updatedPost = await Post.findOneAndUpdate(
       { _id: postId }, // Use the unique field for the query
       {
-        likes: post.likes + 1
+        likes: post.likes + 1,
       },
       { new: true }
     );
 
-    res.json({ success: true, updatedPost , updatedUser});
+    res.json({ success: true, updatedPost, updatedUser });
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -193,10 +226,10 @@ router.post("/unlike/:postId", async (req, res) => {
     const isPostAlreadyLiked = user.liked_posts.includes(postId);
 
     //is post already liked
-    if (!isPostAlreadyLiked){
+    if (!isPostAlreadyLiked) {
       return res
-      .status(400)
-      .json({ success: false, message: "Post Not liked" });
+        .status(400)
+        .json({ success: false, message: "Post Not liked" });
     }
 
     //add post to liked
@@ -207,12 +240,12 @@ router.post("/unlike/:postId", async (req, res) => {
     const updatedPost = await Post.findOneAndUpdate(
       { _id: postId }, // Use the unique field for the query
       {
-        likes: post.likes - 1
+        likes: post.likes - 1,
       },
       { new: true }
     );
 
-    res.json({ success: true, updatedPost , updatedUser});
+    res.json({ success: true, updatedPost, updatedUser });
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, message: "Internal Server Error" });
