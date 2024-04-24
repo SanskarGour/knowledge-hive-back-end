@@ -38,6 +38,7 @@ router.put("/profile/:username", async (req, res) => {
     const updatedUser = await User.findOneAndUpdate(
       { username }, // Query for finding the user by username
       {
+        userdesc: req.body.userdesc,
         name: req.body.name,
         contact: req.body.contact,
       },
