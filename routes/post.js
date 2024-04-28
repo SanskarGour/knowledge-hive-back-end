@@ -43,6 +43,8 @@ router.get("/fetch", (req, res) => {
 //add new Post
 router.post("/add", async (req, res) => {
   try {
+    if(req.body.category === undefined) req.body.category = ["all"]
+    else if(!req.body.category.includes("all")) req.body.category.unshift("all");
     const newPost = await Post.create({
       username: req.body.username,
       email: req.body.email,
