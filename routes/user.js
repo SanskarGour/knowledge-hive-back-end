@@ -2,6 +2,19 @@ const express = require("express");
 const router = express.Router();
 const User = require("../model/userSchema");
 
+//All Get user
+router.get("/profile", (req, res) => {
+  User.find()
+    .then((users) => {
+      res.json({ success: true, data: users });
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(401).json({ success: false, errmsg: err });
+      console.log(err);
+    });
+});
+
 // Get user
 router.get("/profile/:username", (req, res) => {
   const { username } = req.params;
