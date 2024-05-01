@@ -11,9 +11,12 @@ const router = express.Router();
 const util = require("util");
 const multer = require("multer");
 const { GridFsStorage } = require("multer-gridfs-storage");
-const database = "knowledge_hive_db";
+const MongoClient = require("mongodb").MongoClient;
+// const URL = "mongodb://127.0.0.1:27017";
+const URL = "mongodb+srv://sanskargour1234:Ua7BRnZnJm1QCNjb@cluster0.p5ccr6o.mongodb.net/";
+const mongoClient = new MongoClient(URL);
 const imgBucket = "photos";
-const URL = "mongodb://127.0.0.1:27017";
+const baseUrl = "http://localhost:5000/files/";
 
 var storage = new GridFsStorage({
   url: URL,
@@ -79,6 +82,34 @@ mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).
     } catch (error) {
       console.log(error);
       return res.status(500).send(error);
+    }
+  });
+
+  app.get("/api/file" , async (req, res)=>{
+    try {  
+      const database = mongoClient.db("test");
+      const images = database.collection(imgBucket + ".files");      
+      const cursor = images.find({});
+
+      if ((await cursor.count()) === 0) {
+        return res.status(500).send({
+          message: "No files found!",
+        });
+      }
+  
+      let fileInfos = [];
+      await cursor.forEach((doc) => {
+        fileInfos.push({
+          name: doc.filename,
+          url: baseUrl + doc.filename,
+        });
+      });
+  
+      return res.status(200).send(fileInfos);
+    } catch (error) {
+      return res.status(500).send({
+        message: error.message,
+      });
     }
   })
 });
