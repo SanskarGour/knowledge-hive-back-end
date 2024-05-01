@@ -3,7 +3,7 @@ const router = express.Router();
 const User = require("../model/userSchema");
 
 //All Get user
-router.get("/profile", (req, res) => {
+router.get("/", (req, res) => {
   User.find()
     .then((users) => {
       res.json({ success: true, data: users });

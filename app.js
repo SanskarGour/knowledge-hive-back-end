@@ -26,7 +26,7 @@ app.use((req, res, next) => {
 });
 
 mongoDB.connect(mongoURL).then(function () {
-  app.get("/", (req, res) => {
+  app.get("", (req, res) => {
     res.send("API Works");
   });
   app.use(express.json());
@@ -34,6 +34,7 @@ mongoDB.connect(mongoURL).then(function () {
   app.use("/api/post", require("./routes/post"));
   app.use("/api/user", require("./routes/user"));
   app.use("/api/category", require("./routes/category"));
+  // app.use("/api/file", require("./routes/upload"));
 });
 
 app.listen(PORT,'0.0.0.0', (error) => {
