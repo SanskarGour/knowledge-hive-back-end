@@ -12,11 +12,12 @@ const util = require("util");
 const multer = require("multer");
 const { GridFsStorage } = require("multer-gridfs-storage");
 const MongoClient = require("mongodb").MongoClient;
+const GridFSBucket = require("mongodb").GridFSBucket;
 // const URL = "mongodb://127.0.0.1:27017";
 const URL = "mongodb+srv://sanskargour1234:Ua7BRnZnJm1QCNjb@cluster0.p5ccr6o.mongodb.net/";
 const mongoClient = new MongoClient(URL);
 const imgBucket = "photos";
-const baseUrl = "http://localhost:5000/files/";
+const baseUrl = "http://localhost:5000/api/file/";
 
 var storage = new GridFsStorage({
   url: URL,
@@ -106,6 +107,33 @@ mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).
       });
   
       return res.status(200).send(fileInfos);
+    } catch (error) {
+      return res.status(500).send({
+        message: error.message,
+      });
+    }
+  })
+
+  app.get("/api/file/:name" , async (req, res)=>{
+    try {  
+      const database = mongoClient.db("test");
+      const bucket = new GridFSBucket(database, {
+        bucketName: imgBucket,
+      });
+  
+      let downloadStream = bucket.openDownloadStreamByName(req.params.name);
+  
+      downloadStream.on("data", function (data) {
+        return res.status(200).write(data);
+      });
+  
+      downloadStream.on("error", function (err) {
+        return res.status(404).send({ message: "Cannot download the Image!" , error: err});
+      });
+  
+      downloadStream.on("end", () => {
+        return res.end();
+      });
     } catch (error) {
       return res.status(500).send({
         message: error.message,
