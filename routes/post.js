@@ -51,6 +51,7 @@ router.post("/add", async (req, res) => {
       postTitle: req.body.postTitle,
       postDesc: req.body.postDesc,
       category: req.body.category,
+      postUrl: req.body.postUrl,
     });
 
     if (req.body.category.length != 0) {

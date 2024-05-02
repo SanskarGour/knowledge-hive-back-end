@@ -12,6 +12,7 @@ const postSchema = new Schema({
   email: { type: String, required: true },
   postTitle: { type: String, required: true },
   postDesc: { type: String, required: true },
+  postUrl: { type: String },
   likes: {type: Number, default:"0"},
   comments : [commentSchema],
   category: [{type: String, default:"all", required: true}],
