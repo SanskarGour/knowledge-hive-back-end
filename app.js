@@ -105,8 +105,8 @@ mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).
           url: baseUrl + doc.filename,
         });
       });
-  
-      return res.status(200).send(fileInfos);
+
+      return res.status(200).send({url : baseUrl+req.file.filename , fileinfo : fileInfos});
     } catch (error) {
       return res.status(500).send({
         message: error.message,
