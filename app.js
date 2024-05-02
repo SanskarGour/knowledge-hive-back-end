@@ -79,7 +79,7 @@ mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).
         });
       }
   
-      return res.status(200).send(req.file);
+      return res.status(200).send({url : `${baseUrl}${req.file.filename}`});
     } catch (error) {
       console.log(error);
       return res.status(500).send(error);
@@ -106,7 +106,7 @@ mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).
         });
       });
 
-      return res.status(200).send({url : baseUrl+req.file.filename , fileinfo : fileInfos});
+      return res.status(200).send({url : `${baseUrl}${req.file.filename}`});
     } catch (error) {
       return res.status(500).send({
         message: error.message,
