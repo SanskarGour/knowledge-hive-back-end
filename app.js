@@ -6,39 +6,56 @@ const cors = require("cors");
 const mongoDB = require("mongoose");
 const CORS_URL = `http://localhost:3000`;
 const mongoURL = process.env.MONGODB_URL;
-
 const router = express.Router();
 const util = require("util");
 const multer = require("multer");
-const { GridFsStorage } = require("multer-gridfs-storage");
 const MongoClient = require("mongodb").MongoClient;
 const GridFSBucket = require("mongodb").GridFSBucket;
-// const URL = "mongodb://127.0.0.1:27017";
-const URL = "mongodb+srv://sanskargour1234:Ua7BRnZnJm1QCNjb@cluster0.p5ccr6o.mongodb.net/";
+const URL = "mongodb://127.0.0.1:27017";
+// const URL = "mongodb+srv://sanskargour1234:Ua7BRnZnJm1QCNjb@cluster0.p5ccr6o.mongodb.net/";
 const mongoClient = new MongoClient(URL);
 const imgBucket = "photos";
 const baseUrl = "http://localhost:5000/api/file/";
 
-var storage = new GridFsStorage({
-  url: URL,
-  options: { useNewUrlParser: true, useUnifiedTopology: true },
-  file: (req, file) => {
-    const match = ["image/png", "image/jpeg"];
-
-    if (match.indexOf(file.mimetype) === -1) {
-      const filename = `knowledge-hive--${file.originalname}`;
-      return filename;
-    }
-
-    return {
-      bucketName: imgBucket,
-      filename: `knowledge-hive--${file.originalname}`
-    };
-  }
+const storage = multer.diskStorage({
+  // cb = call back
+  destination: function (req, file, cb) {
+    cb(null, "./public/temp");
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname + "-" + Date.now());
+  },
 });
 
-var uploadFiles = multer({ storage: storage }).single("file");
-var uploadFilesMiddleware = util.promisify(uploadFiles);
+const cloudinary = { v2 } = require( "cloudinary");
+const fs = require("fs");
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const uploadToCloudinary = async (localFilePath) => {
+  try {
+    if (!localFilePath) return null;
+
+    // upload file on cloudinary
+    const response = await cloudinary.uploader.upload(localFilePath, {
+      resource_type: "auto",
+    });
+
+    // File uploaded successfully -> removes the locally saved temp file
+    fs.unlinkSync(localFilePath);
+    return response;
+  } catch (error) {
+    // removes the locally saved temp file as uploading got failed.
+    fs.unlinkSync(localFilePath);
+    return null;
+  }
+};
+
+const upload = multer({ storage });
 
 app.use(
   cors({
@@ -54,11 +71,14 @@ app.use((req, res, next) => {
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept"
   );
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, PUT");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PATCH, DELETE, PUT"
+  );
   next();
 });
 
-mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).then(function () {
+mongoDB.connect(mongoURL).then(function () {
   app.get("", (req, res) => {
     res.send("API Works");
   });
@@ -68,28 +88,43 @@ mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).
   app.use("/api/user", require("./routes/user"));
   app.use("/api/category", require("./routes/category"));
 
-  app.post("/api/file/upload",async (req,res)=>{
-    try {
-      await uploadFilesMiddleware(req, res);
-      console.log("Uploaded file:", req.file);
-  
-      if (req.file === undefined) {
-        return res.send({
-          message: "You must select a file.",
-        });
-      }
-  
-      return res.status(200).send({url : `${baseUrl}${req.file.filename}`});
-    } catch (error) {
-      console.log(error);
-      return res.status(500).send(error);
-    }
-  });
+  app.post(
+    "/api/file/upload",
+    upload.single("post"),
+    async (req, res) => {
+      try {
+        let postLocalPath;
 
-  app.get("/api/file" , async (req, res)=>{
-    try {  
+        if (req.file) {
+          postLocalPath = req.file?.path;
+        }
+      
+        if (!postLocalPath) {
+          return res.send({
+            message: "You must select a post.",
+          });
+        }
+
+        const post = await uploadToCloudinary(postLocalPath);
+
+        if (!post) {
+          return res.send({
+            message: "You must select a file.",
+          });
+        }
+
+        return res.status(200).send({ url: `${post.url}` });
+      } catch (error) {
+        console.log(error);
+        return res.status(500).send(error);
+      }
+    }
+  );
+
+  app.get("/api/file", async (req, res) => {
+    try {
       const database = mongoClient.db("test");
-      const images = database.collection(imgBucket + ".files");      
+      const images = database.collection(imgBucket + ".files");
       const cursor = images.find({});
 
       if ((await cursor.count()) === 0) {
@@ -97,7 +132,7 @@ mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).
           message: "No files found!",
         });
       }
-  
+
       let fileInfos = [];
       await cursor.forEach((doc) => {
         fileInfos.push({
@@ -106,31 +141,33 @@ mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).
         });
       });
 
-      return res.status(200).send({url : `${baseUrl}${req.file.filename}`});
+      return res.status(200).send({ url: `${baseUrl}${req.file.filename}` });
     } catch (error) {
       return res.status(500).send({
         message: error.message,
       });
     }
-  })
+  });
 
-  app.get("/api/file/:name" , async (req, res)=>{
-    try {  
+  app.get("/api/file/:name", async (req, res) => {
+    try {
       const database = mongoClient.db("test");
       const bucket = new GridFSBucket(database, {
         bucketName: imgBucket,
       });
-  
+
       let downloadStream = bucket.openDownloadStreamByName(req.params.name);
-  
+
       downloadStream.on("data", function (data) {
         return res.status(200).write(data);
       });
-  
+
       downloadStream.on("error", function (err) {
-        return res.status(404).send({ message: "Cannot download the Image!" , error: err});
+        return res
+          .status(404)
+          .send({ message: "Cannot download the Image!", error: err });
       });
-  
+
       downloadStream.on("end", () => {
         return res.end();
       });
@@ -139,10 +176,10 @@ mongoDB.connect(mongoURL , { useNewUrlParser: true, useUnifiedTopology: true }).
         message: error.message,
       });
     }
-  })
+  });
 });
 
-app.listen(PORT,'0.0.0.0', (error) => {
+app.listen(PORT, "0.0.0.0", (error) => {
   if (!error)
     console.log(
       "Server is Successfully Running, and App is listening on port " + PORT
