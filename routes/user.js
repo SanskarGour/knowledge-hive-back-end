@@ -18,7 +18,7 @@ router.get("/", (req, res) => {
 // Get user
 router.get("/profile/:username", (req, res) => {
   const { username } = req.params;
-  console.log(username);
+
   User.findOne({ username })
     .then((user) => {
       if (!user) {

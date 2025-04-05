@@ -12,7 +12,6 @@ const multer = require("multer");
 const MongoClient = require("mongodb").MongoClient;
 const GridFSBucket = require("mongodb").GridFSBucket;
 const URL = "mongodb://127.0.0.1:27017";
-// const URL = "mongodb+srv://sanskargour1234:Ua7BRnZnJm1QCNjb@cluster0.p5ccr6o.mongodb.net/";
 const mongoClient = new MongoClient(URL);
 const imgBucket = "photos";
 const baseUrl = "http://localhost:5000/api/file/";
@@ -27,7 +26,13 @@ const storage = multer.diskStorage({
   },
 });
 
-const cloudinary = { v2 } = require( "cloudinary");
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: true
+}));
+
+const cloudinary = ({ v2 } = require("cloudinary"));
 const fs = require("fs");
 
 cloudinary.config({
@@ -88,38 +93,34 @@ mongoDB.connect(mongoURL).then(function () {
   app.use("/api/user", require("./routes/user"));
   app.use("/api/category", require("./routes/category"));
 
-  app.post(
-    "/api/file/upload",
-    upload.single("post"),
-    async (req, res) => {
-      try {
-        let postLocalPath;
+  app.post("/api/file/upload", upload.single("post"), async (req, res) => {
+    try {
+      let postLocalPath;
 
-        if (req.file) {
-          postLocalPath = req.file?.path;
-        }
-      
-        if (!postLocalPath) {
-          return res.send({
-            message: "You must select a post.",
-          });
-        }
-
-        const post = await uploadToCloudinary(postLocalPath);
-
-        if (!post) {
-          return res.send({
-            message: "You must select a file.",
-          });
-        }
-
-        return res.status(200).send({ url: `${post.url}` });
-      } catch (error) {
-        console.log(error);
-        return res.status(500).send(error);
+      if (req.file) {
+        postLocalPath = req.file?.path;
       }
+
+      if (!postLocalPath) {
+        return res.send({
+          message: "You must select a post.",
+        });
+      }
+
+      const post = await uploadToCloudinary(postLocalPath);
+
+      if (!post) {
+        return res.send({
+          message: "You must select a file.",
+        });
+      }
+
+      return res.status(200).send({ url: `${post.url}` });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send(error);
     }
-  );
+  });
 
   app.get("/api/file", async (req, res) => {
     try {
