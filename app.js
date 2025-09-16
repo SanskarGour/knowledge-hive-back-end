@@ -1,189 +1,161 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
-require("dotenv").config();
-const PORT = process.env.PORT || 5000;
 const cors = require("cors");
-const mongoDB = require("mongoose");
-const CORS_URL = `http://localhost:3000`;
-const mongoURL = process.env.MONGODB_URL;
-const router = express.Router();
-const util = require("util");
+const mongoose = require("mongoose");
 const multer = require("multer");
-const MongoClient = require("mongodb").MongoClient;
-const GridFSBucket = require("mongodb").GridFSBucket;
-const URL = "mongodb://127.0.0.1:27017";
-const mongoClient = new MongoClient(URL);
-const imgBucket = "photos";
-const baseUrl = "http://localhost:5000/api/file/";
-
-const storage = multer.diskStorage({
-  // cb = call back
-  destination: function (req, file, cb) {
-    cb(null, "./public/temp");
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname + "-" + Date.now());
-  },
-});
-
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'OPTIONS'],
-  credentials: true
-}));
-
-const cloudinary = ({ v2 } = require("cloudinary"));
+const { MongoClient, GridFSBucket } = require("mongodb");
+const cloudinary = require("cloudinary").v2;
 const fs = require("fs");
+const path = require("path");
 
+const PORT = process.env.PORT || 5000;
+const mongoURL = process.env.MONGODB_URL;
+
+const morgan = require("morgan");
+app.use(morgan("dev")); // Logs requests in concise format
+
+// Cloudinary Config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Dynamic Base URL
+const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}/api/file`;
+
+// Mongo Client for GridFS
+const mongoClient = new MongoClient(mongoURL);
+const imgBucket = "photos";
+
+// Multer Configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "./public/temp"),
+  filename: (req, file, cb) => cb(null, `${file.originalname}-${Date.now()}`),
+});
+const upload = multer({ storage });
+
+// Middleware
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PATCH", "DELETE", "PUT"],
+    allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept"],
+    credentials: true,
+  })
+);
+
+app.use(express.json());
+
+// Utility: Upload to Cloudinary
 const uploadToCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) return null;
-
-    // upload file on cloudinary
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
     });
-
-    // File uploaded successfully -> removes the locally saved temp file
-    fs.unlinkSync(localFilePath);
+    fs.unlinkSync(localFilePath); // Remove temp file
     return response;
   } catch (error) {
-    // removes the locally saved temp file as uploading got failed.
+    console.log(error)
     fs.unlinkSync(localFilePath);
     return null;
   }
 };
 
-const upload = multer({ storage });
+// MongoDB Connection
+mongoose
+  .connect(mongoURL)
+  .then(() => {
+    console.log("MongoDB connected");
 
-app.use(
-  cors({
-    origin: CORS_URL,
-    methods: ["GET", "POST", "PATCH", "DELETE", "PUT"],
-    allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept"],
+    // Base route
+    app.get("/", (req, res) => {
+      res.send("API is running...");
+    });
+
+    // API Routes
+    app.use("/api", require("./routes/register"));
+    app.use("/api/post", require("./routes/post"));
+    app.use("/api/user", require("./routes/user"));
+    app.use("/api/category", require("./routes/category"));
+
+    // Upload endpoint
+    app.post("/api/file/upload", upload.single("post"), async (req, res) => {
+      try {
+        const postLocalPath = req.file?.path;
+
+        if (!postLocalPath) {
+          return res.status(400).send({ message: "No file selected" });
+        }
+
+        const post = await uploadToCloudinary(postLocalPath);
+
+        if (!post) {
+          return res.status(500).send({ message: "Upload failed" });
+        }
+
+        return res.status(200).send({ url: post.url });
+      } catch (error) {
+        console.error(error);
+        return res.status(500).send(error);
+      }
+    });
+
+    // Fetch all files info
+    app.get("/api/file", async (req, res) => {
+      try {
+        const database = mongoClient.db("test");
+        const images = database.collection(`${imgBucket}.files`);
+        const cursor = images.find({});
+
+        const count = await cursor.count();
+        if (count === 0) {
+          return res.status(404).send({ message: "No files found" });
+        }
+
+        const fileInfos = [];
+        await cursor.forEach((doc) => {
+          fileInfos.push({
+            name: doc.filename,
+            url: `${baseUrl}/${doc.filename}`,
+          });
+        });
+
+        return res.status(200).send(fileInfos);
+      } catch (error) {
+        return res.status(500).send({ message: error.message });
+      }
+    });
+
+    // Download a specific file
+    app.get("/api/file/:name", async (req, res) => {
+      try {
+        const database = mongoClient.db("test");
+        const bucket = new GridFSBucket(database, { bucketName: imgBucket });
+
+        const downloadStream = bucket.openDownloadStreamByName(req.params.name);
+
+        downloadStream.on("data", (data) => res.write(data));
+        downloadStream.on("error", () =>
+          res.status(404).send({ message: "Cannot download the image!" })
+        );
+        downloadStream.on("end", () => res.end());
+      } catch (error) {
+        return res.status(500).send({ message: error.message });
+      }
+    });
+
+    // Start server
+    app.listen(PORT, "0.0.0.0", (error) => {
+      if (!error) {
+        console.log(`Server running on port ${PORT}`);
+      } else {
+        console.error("Error starting server:", error);
+      }
+    });
   })
-);
-
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PATCH, DELETE, PUT"
-  );
-  next();
-});
-
-mongoDB.connect(mongoURL).then(function () {
-  app.get("", (req, res) => {
-    res.send("API Works");
+  .catch((err) => {
+    console.error("MongoDB connection failed:", err.message);
   });
-  app.use(express.json());
-  app.use("/api", require("./routes/register"));
-  app.use("/api/post", require("./routes/post"));
-  app.use("/api/user", require("./routes/user"));
-  app.use("/api/category", require("./routes/category"));
-
-  app.post("/api/file/upload", upload.single("post"), async (req, res) => {
-    try {
-      let postLocalPath;
-
-      if (req.file) {
-        postLocalPath = req.file?.path;
-      }
-
-      if (!postLocalPath) {
-        return res.send({
-          message: "You must select a post.",
-        });
-      }
-
-      const post = await uploadToCloudinary(postLocalPath);
-
-      if (!post) {
-        return res.send({
-          message: "You must select a file.",
-        });
-      }
-
-      return res.status(200).send({ url: `${post.url}` });
-    } catch (error) {
-      console.log(error);
-      return res.status(500).send(error);
-    }
-  });
-
-  app.get("/api/file", async (req, res) => {
-    try {
-      const database = mongoClient.db("test");
-      const images = database.collection(imgBucket + ".files");
-      const cursor = images.find({});
-
-      if ((await cursor.count()) === 0) {
-        return res.status(500).send({
-          message: "No files found!",
-        });
-      }
-
-      let fileInfos = [];
-      await cursor.forEach((doc) => {
-        fileInfos.push({
-          name: doc.filename,
-          url: baseUrl + doc.filename,
-        });
-      });
-
-      return res.status(200).send({ url: `${baseUrl}${req.file.filename}` });
-    } catch (error) {
-      return res.status(500).send({
-        message: error.message,
-      });
-    }
-  });
-
-  app.get("/api/file/:name", async (req, res) => {
-    try {
-      const database = mongoClient.db("test");
-      const bucket = new GridFSBucket(database, {
-        bucketName: imgBucket,
-      });
-
-      let downloadStream = bucket.openDownloadStreamByName(req.params.name);
-
-      downloadStream.on("data", function (data) {
-        return res.status(200).write(data);
-      });
-
-      downloadStream.on("error", function (err) {
-        return res
-          .status(404)
-          .send({ message: "Cannot download the Image!", error: err });
-      });
-
-      downloadStream.on("end", () => {
-        return res.end();
-      });
-    } catch (error) {
-      return res.status(500).send({
-        message: error.message,
-      });
-    }
-  });
-});
-
-app.listen(PORT, "0.0.0.0", (error) => {
-  if (!error)
-    console.log(
-      "Server is Successfully Running, and App is listening on port " + PORT
-    );
-  else console.log("Error occurred, server can't start", error);
-});
